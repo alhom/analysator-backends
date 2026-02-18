@@ -51,11 +51,16 @@ fn main() {
 
     let octree_lib_dir = octree_dst.join("lib");
     let zfp_lib_dir = zfp_dst.join("lib");
+    let zfp_lib64_dir = zfp_dst.join("lib64");
+    if zfp_lib64_dir.exists() {
+        println!("cargo:rustc-link-search=native={}", zfp_lib64_dir.display());
+    } else {
+        println!("cargo:rustc-link-search=native={}", zfp_lib_dir.display());
+    }
     println!(
         "cargo:rustc-link-search=native={}",
         octree_lib_dir.display()
     );
-    println!("cargo:rustc-link-search=native={}", zfp_lib_dir.display());
     println!("cargo:rustc-link-lib=dylib=toctree_compressor");
     println!("cargo:rustc-link-lib=dylib=zfp");
     println!("cargo:rustc-link-lib=stdc++");
