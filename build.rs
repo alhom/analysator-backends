@@ -70,6 +70,11 @@ fn main() {
             "cargo:rustc-link-arg=-Wl,-rpath,{}",
             octree_lib_dir.display()
         );
+        println!(
+            "cargo:rustc-link-arg=-Wl,-rpath,{}",
+            zfp_lib64_dir.display()
+        );
+        println!("cargo:rustc-link-arg=-Wl,-rpath,{}", zfp_lib_dir.display());
     }
     println!("cargo:rerun-if-changed=external/tucker-octree/toctree.cpp");
 }
