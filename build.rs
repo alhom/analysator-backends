@@ -3,7 +3,9 @@ use std::process::Command;
 use std::{env, path::PathBuf};
 
 fn main() {
-    let zfp_dst = cmake::Config::new("external/zfp").build();
+    let zfp_dst = cmake::Config::new("external/zfp")
+        .define("BUILD_SHARED_LIBS", "OFF")
+        .build();
     let eigen_dst = cmake::Config::new("external/eigen")
         .define("CMAKE_POLICY_VERSION_MINIMUM", "3.5")
         .build();
@@ -27,7 +29,7 @@ fn main() {
     let octree_dst = cmake::Config::new(octree_src)
         .define("TOCTREE_L2ERROR", "true")
         .define("CMAKE_BUILD_TYPE", "Release")
-        .define("BUILD_SHARED_LIBS", "ON")
+        .define("BUILD_SHARED_LIBS", "OFF")
         .define("zfp_DIR", format!("{}/lib/cmake/zfp", zfp_dst.display()))
         .define(
             "Eigen3_DIR",
@@ -49,6 +51,7 @@ fn main() {
         |_dir| println!("cargo:rustc-link-lib=vlasiator_vdf_compressor_nn"),
     );
 
+    println!("cargo:rerun-if-changed=external/tucker-octree/toctree.cpp");
     let octree_lib_dir = octree_dst.join("lib");
     let zfp_lib_dir = zfp_dst.join("lib");
     let zfp_lib64_dir = zfp_dst.join("lib64");
@@ -61,22 +64,14 @@ fn main() {
         "cargo:rustc-link-search=native={}",
         octree_lib_dir.display()
     );
-    println!("cargo:rustc-link-lib=dylib=toctree_compressor");
-    println!("cargo:rustc-link-lib=dylib=zfp");
-    println!("cargo:rustc-link-lib=stdc++");
 
-    if linux {
-        println!(
-            "cargo:rustc-link-arg=-Wl,-rpath,{}",
-            octree_lib_dir.display()
-        );
-        println!(
-            "cargo:rustc-link-arg=-Wl,-rpath,{}",
-            zfp_lib64_dir.display()
-        );
-        println!("cargo:rustc-link-arg=-Wl,-rpath,{}", zfp_lib_dir.display());
-    }
+    println!("cargo:rustc-link-lib=static=toctree_compressor");
+    println!("cargo:rustc-link-lib=static=zfp");
+    println!("cargo:rustc-link-lib=stdc++");
     println!("cargo:rerun-if-changed=external/tucker-octree/toctree.cpp");
+    if linux {
+        println!("cargo:rustc-link-arg=-lstdc++");
+    }
 }
 
 fn link_so(
