@@ -8,6 +8,11 @@ repository = "https://github.com/kstppd/vlsvrs"
 description = "VLSV reader with C and Python bindings"
 keywords = ["vlasiator","vlsv","plasma","vdf","hpc"]
 categories = ["simulation","parsing","data-structures"]
+exclude = [
+    "external/*",
+    "target/*",
+    "*.gif", # Example: exclude large data files
+]
 
 [build-dependencies]
 cmake = "0.1"
