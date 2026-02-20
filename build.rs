@@ -37,19 +37,64 @@ fn main() {
         )
         .build();
 
+    let lib_out_dir = octree_dst.join("lib");
+    let asterix_dir = Path::new("external/asterix");
+    let mlp_src = asterix_dir.join("src/vdf_compressor_nn.cu");
+    let ml_lib_name = "vlasiator_vdf_compressor_nn";
+    let ml_lib_filename = format!("lib{}.so", ml_lib_name);
+    let ml_lib_path = lib_out_dir.join(&ml_lib_filename);
+
+    let compiler = if is_program_in_path("nvcc") {
+        Some("nvcc")
+    } else if is_program_in_path("hipcc") {
+        Some("hipcc")
+    } else {
+        None
+    };
+
+    let include_path = asterix_dir.join("include");
+    if let Some(cc) = compiler {
+        println!("cargo:rerun-if-changed={}", mlp_src.display());
+        let mut gpu_cmd = Command::new(cc);
+        gpu_cmd.args(&[
+            mlp_src.to_str().unwrap(),
+            "--std=c++20",
+            "-DTINYAI_MEMORY_GB=4",
+            &format!("-I{}", include_path.display()),
+            "--shared",
+            "-o",
+            ml_lib_path.to_str().unwrap(),
+            "-Xcompiler=-fPIC",
+            "-lcublas",
+        ]);
+
+        if cc == "nvcc" {
+            gpu_cmd.arg("-DNOPROFILE").arg("-arch=sm_86");
+        } else if cc == "hipcc" {
+            gpu_cmd.arg("-DNOPROFILE").arg("-x").arg("hip");
+        }
+        if !gpu_cmd.status().map(|s| s.success()).unwrap_or(false) {
+            panic!("GPU compilation failed with {}.", cc);
+        }
+        println!("cargo:rustc-link-search=native={}", lib_out_dir.display());
+        println!("cargo:rustc-link-lib=dylib={}", ml_lib_name);
+
+        if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
+            println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib_out_dir.display());
+        }
+        println!("cargo:rustc-link-search=native=/usr/local/cuda/lib64");
+        println!("cargo:rustc-link-lib=cudart");
+        println!("cargo:rustc-link-lib=cublas");
+    } else {
+        println!("cargo:warning=No GPU compiler found. NN features disabled.");
+        println!("cargo:rustc-cfg=no_nn");
+    }
+
     for cfg in ["no_nn", "no_octree"] {
         println!("cargo:rustc-check-cfg=cfg({cfg})");
     }
     println!("cargo:rerun-if-env-changed=MLP_COMPRESSION_DIR");
     let linux = env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux");
-
-    link_so(
-        "MLP_COMPRESSION_DIR",
-        "libvlasiator_vdf_compressor_nn.so",
-        "no_nn",
-        linux,
-        |_dir| println!("cargo:rustc-link-lib=vlasiator_vdf_compressor_nn"),
-    );
 
     println!("cargo:rerun-if-changed=external/tucker-octree/toctree.cpp");
     let octree_lib_dir = octree_dst.join("lib");
@@ -74,35 +119,10 @@ fn main() {
     }
 }
 
-fn link_so(
-    env_key: &str,
-    so_name: &str,
-    cfg_if_missing: &str,
-    linux: bool,
-    emit_libs: impl FnOnce(&PathBuf),
-) {
-    let Some(base) = env::var_os(env_key).map(PathBuf::from) else {
-        println!("cargo:rustc-cfg={cfg_if_missing}");
-        return;
-    };
-
-    let candidates = [
-        base.join("lib").join(so_name),
-        base.join(so_name),
-        base.join("build").join(so_name),
-    ];
-
-    let Some(so) = candidates.into_iter().find(|p| p.exists()) else {
-        println!("cargo:rustc-cfg={cfg_if_missing}");
-        return;
-    };
-
-    let dir = so.parent().unwrap().to_path_buf();
-    println!("cargo:rustc-link-search=native={}", dir.display());
-    emit_libs(&dir);
-
-    if linux {
-        println!("cargo:rustc-link-arg=-Wl,-rpath,{}", dir.display());
-    }
-    println!("cargo:rerun-if-changed={}", so.display());
+fn is_program_in_path(program: &str) -> bool {
+    Command::new("which")
+        .arg(program)
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
