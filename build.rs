@@ -85,7 +85,6 @@ fn main() {
                 "-fPIC",
                 "-lhipblas",
                 "-DSKIP_HOSTBLAS",
-                "-lblas",
             ]);
             gpu_cmd.arg("-DNOPROFILE").arg("-x").arg("hip");
         }
