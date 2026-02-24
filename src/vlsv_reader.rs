@@ -1408,9 +1408,16 @@ pub mod mod_vlsv_reader {
                     }
                 }
 
+                #[cfg(no_octree)]
+                CompressionMethod::OCTREE => {
+                    panic!("Octree compression not supported");
+                }
+                #[cfg(not(no_octree))]
                 CompressionMethod::OCTREE => {
                     use std::os::raw::c_uchar;
+                    #[cfg(not(no_octree))]
                     #[link(name = "toctree_compressor")]
+                    #[cfg(not(no_octree))]
                     unsafe extern "C" {
                         pub fn uncompress_with_toctree_method(
                             buffer: *mut f32,
@@ -1452,6 +1459,7 @@ pub mod mod_vlsv_reader {
                         1,
                     ]);
 
+                    #[cfg(not(no_octree))]
                     unsafe {
                         uncompress_with_toctree_method(
                             decompressed_vdf.as_mut_ptr() as *mut f32,
@@ -1916,10 +1924,16 @@ pub mod mod_vlsv_reader {
                     Some(vdf)
                 }
                 //No blockids here
+                #[cfg(no_octree)]
+                CompressionMethod::OCTREE => {
+                    panic!("Octree compression not supported");
+                }
+                #[cfg(not(no_octree))]
                 CompressionMethod::OCTREE => {
                     use core::ffi::{c_float, c_ulonglong};
                     use std::os::raw::c_uchar;
                     type VdfReal = c_float;
+                    #[cfg(not(no_octree))]
                     #[link(name = "toctree_compressor")]
                     unsafe extern "C" {
                         pub fn uncompress_with_toctree_method(
