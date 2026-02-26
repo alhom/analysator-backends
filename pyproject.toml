@@ -5,7 +5,7 @@ build-backend = "maturin"
 
 [project]
 name = "analysator_backends"
-version = "0.9.9" 
+version = "0.9.1" 
 description = "Analysator Backends"
 readme = "README.md"
 requires-python = ">=3.8"
