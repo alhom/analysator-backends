@@ -1,9 +1,7 @@
 name: Release to TestPyPI
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow-dispatch:
 
 jobs:
   build_wheels:
