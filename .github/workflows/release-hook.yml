@@ -1,0 +1,43 @@
+name: Build wheels and upload to release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build_wheels:
+    name: Build wheels on ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build wheels via Maturin Docker
+        run: |
+          docker run --rm -v $(pwd):/io ghcr.io/pyo3/maturin \
+            build --release --manylinux 2014 \
+            --interpreter python${{ matrix.python-version }}
+
+      - name: Upload wheels as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.python-version }}
+          path: target/wheels/*.whl
+
+      - name: Upload binary
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          file-glob: true
+          file: target/wheels/*.whl
+          tag: ${{ github.ref }}
+          overwrite: true
+          body: "A test release"
