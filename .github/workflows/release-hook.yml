@@ -35,8 +35,7 @@ jobs:
       - name: Upload binary
         uses: svenstaro/upload-release-action@v2
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          file-glob: true
+          file_glob: true
           file: target/wheels/*.whl
           tag: ${{ github.ref }}
           overwrite: true
